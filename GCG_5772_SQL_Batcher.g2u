@@ -1,0 +1,104 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("Select SQL File")
+Gui.Form..Size(7005,2340)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MaxButton(False)
+Gui.Form..MinButton(False)
+Gui.Form..MousePointer(0)
+Gui.Form..Sizeable(False)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form.txt1.Create(TextBox,"",True,5820,300,0,105,375,True,0,"Arial",8,-2147483643,1)
+Gui.Form.txt1.Locked(True)
+Gui.Form.lbl1.Create(Label,"Select File...",True,1935,255,0,120,165,True,0,"Arial",8,-2147483633,0)
+Gui.Form.btnStart.Create(Button)
+Gui.Form.btnStart.Size(405,375)
+Gui.Form.btnStart.Position(5985,330)
+Gui.Form.btnStart.Caption("^")
+Gui.Form.btnStart.Event(Click,cmd1_Click)
+Gui.Form.cmd2.Create(Button)
+Gui.Form.cmd2.Size(855,375)
+Gui.Form.cmd2.Position(5505,960)
+Gui.Form.cmd2.Caption("Start")
+Gui.Form.cmd2.Event(Click,cmd2_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.sFile.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'by Josh Withrow
+'2019-10-17
+'Because PCC hates when you paste in 20,000+ individual statements into a Script Window and try to execute it, this processes a TXT file full of SQL statements.
+
+Gui.Form..Show()
+Program.Sub.Main.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.End
+
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.cmd1_Click.Start
+F.Intrinsic.UI.ShowOpenFileDialog("","*.*",V.Global.sFile)
+Gui.Form.txt1.Text(V.Global.sFile)
+Program.Sub.cmd1_Click.End
+
+Program.Sub.cmd2_Click.Start
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sReadFile.Declare(String)
+V.Local.sErrorFile.Declare(String)
+V.Local.sFileLines.Declare(String)
+V.Local.sErrors.Declare(String)
+V.Local.iCount.Declare(Long)
+V.Local.sMsg.Declare(String)
+V.Local.sRet.Declare(String)
+
+F.Intrinsic.File.Exists(V.Global.sFile,V.Local.bFileExists)
+Function.Intrinsic.Control.If(V.Local.bFileExists)
+	Gui.Form..Visible(False)
+	
+	F.Intrinsic.String.Build("{0}{1}_SQLBatchExecutor_Errors.txt",V.Caller.LocalGSSTempDir,V.Ambient.Cuser,V.Local.sErrorFile)
+	F.Intrinsic.File.Exists(V.Local.sErrorFile,V.Local.bFileExists)
+	F.Intrinsic.Control.If(V.Local.bFileExists)
+		F.Intrinsic.File.DeleteFile(V.Local.sErrorFile)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.File.File2String(V.Global.sFile,V.Local.sReadFile)
+	F.Intrinsic.String.Split(V.Local.sReadFile,V.Ambient.NewLine,V.Local.sFileLines)
+	F.Intrinsic.UI.InvokeWaitDialog("Preparing work...","Wait...")
+	F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	
+	F.Intrinsic.Control.For(V.Local.iCount,0,V.Local.sFileLines.UBound,1)
+		
+		F.Intrinsic.String.Build("Executing line {0} of {1}...",V.Local.iCount,V.Local.sFileLines.UBound,V.Local.sMsg)
+		F.Intrinsic.UI.ChangeWaitStatus(V.Local.sMsg,V.Local.iCount,0,V.Local.sFileLines.UBound)
+		
+		F.Intrinsic.Control.Try
+			F.ODBC.Connection!conx.Execute(V.Local.sFileLines(V.Local.iCount))
+		F.Intrinsic.Control.Catch
+			F.Intrinsic.String.Build("{0} // Line Number: {1} // {2}{3}",V.Ambient.ErrorDescription,V.Local.iCount,V.Local.sFileLines(V.Local.iCount),V.Ambient.NewLine,V.Local.sErrors)
+			F.Intrinsic.File.Append2File(V.Local.sErrorFile,V.Local.sErrors)
+		F.Intrinsic.Control.EndTry
+	
+	F.Intrinsic.Control.Next(V.Local.iCount)
+	
+	F.ODBC.Connection!conx.Close
+	
+	F.Intrinsic.Task.ShellExec("","open",V.Local.sErrorFile,"",V.Caller.TempDir,1)
+	F.Intrinsic.Control.CallSub(form_unload)
+
+Function.Intrinsic.Control.Else
+	F.Intrinsic.UI.Msgbox("File not found...","Error 404")
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmd2_Click.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$JWITHROW$}$10/17/2019 9:58:19 AM$}$False
+${$5$}$2.0.0.0$}$2
+${$6$}$jwithrow$}$20200512190341792$}$D95tSYIikIvF+oq+s87EtBQePACEH+EykwAUdA6q+nMccxx7EwHp2Rb6YyRNORnPcD+8r0pFlQdfkxyXm87drg==
+Program.Sub.Comments.End
